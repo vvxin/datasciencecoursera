@@ -1,2 +1,2 @@
 # datasciencecoursera
-Coursera materials  - Data Science 
+coursera assignment
