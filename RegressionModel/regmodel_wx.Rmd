@@ -1,0 +1,104 @@
+---
+title: "Does Transmission Type affect Mileage?"
+author: "Wang Xin"
+date: "2016-4-25"
+output: pdf_document
+---
+
+## Executive Summary
+
+In responding of the insterests of _Motor Trend_, a magazine about the automobile industry, this report explores the relationship between a set of variables and mile per gallon(MPG), trying to answer two questions:
+
+* Is an automatic or manual transmission better for MPG
+* Quantify the MPG difference between automatic and manual transmissions
+
+__Notice__: This work is part of Coursera regression model courese's assignment.  The results could be wrong or outdated.  
+
+## Load and Prepare Data
+
+```{r}
+data("mtcars")
+dt <- mtcars
+dt$am<-factor(dt$am,levels=c(0,1),labels=c('Automatic','Manual'))
+```
+
+## Exploratory Data Analyse #1
+
+By simply boxplot mpg by different transmission type (See Appendix #1), it shows that manual got higher mpg than automatic. 
+
+## Building Model #1
+
+```{r, eval=FALSE}
+fit1 <- lm(mpg ~ am, data = dt)
+summary(fit1)
+```
+It shows that an automatic car with 17.147 mpg, gets 7.245 mpg more if it is manual transimission.  The Adjusted R-squared vaue is 0.3385, which meacs the model explain only 34% of the MPG varibles. So, more variables need to be indroduced into the model. 
+
+## ANOVA test
+
+Implement ANOVA test to determine those most relevant variables.
+
+```{r}
+dt_anova <- aov(formula = mpg ~ ., data = dt)
+summary(dt_anova)
+```
+
+The results suggest that disp(displacement), wt(Weight) and cyl(Number of cylinders) are those top 3 significant variables.
+
+## Exploratory Data Analyse #2
+
+Visiualize more variables (See appendix #2) and it shows that disp,wt,cyl all have stronger relationship with mpg. 
+
+## Building Model #2
+
+Build new model with the other 3 varibales:
+
+```{r}
+fit2 <- lm(mpg ~ cyl + disp + wt + am, data = dt)
+summary(fit2)
+```
+
+It shows that disp is not significant for the model.  So I drop this varible.
+
+## Building Model #3
+
+```{r}
+fit3 <- lm(mpg ~ cyl + wt + am, data = dt)
+summary(fit3)
+```
+This model has Residual standard error as 2.612 on 28 degree of freedom, and Adjusted R-squared value os 0.8122, which means it can explain 81% of the MPG variables. All of the coeddicients are significant at 0.05 significant level.  This is a good one.
+
+## Residual plot and diagnostics
+
+According to the residual plots (See Appendix #3):
+
+1. The residuals vs fitted plot shows no consistent pattern
+2. The points lie closely to the line, so the residuals are normally distributed
+3. The scale-location plot confirms the constant variance assumption
+4. No outliers are present. 
+
+## Conclusion
+
+In this dataset, although manual vehicles achieve more mpg that automatics, thransmission type is more a good factor to predict mpg. The number of cylinders and the gross weight are much more directly linked to fuel usage.
+
+
+
+
+## Appendix #1 - botplot
+```{r, fig.width=5, fig.height=3}
+plot(mpg ~ am, data = dt, main = "Miles/Gallon vs. Transmission Tpye")
+```
+
+## Appendix #2 - plot more variables
+```{r,fig.height=3}
+library(ggplot2)
+qplot(x = mpg, y = disp, data = dt,
+      size = wt, color = factor(cyl), facets=.~am,
+      main='Variables Effect on MPG')
+```
+
+## Appendix #3 - residual plots
+```{r, fig.height=8}
+par(mfrow = c(2,2))
+plot(fit3)
+```

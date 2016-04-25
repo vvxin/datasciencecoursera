@@ -1,0 +1,125 @@
+---
+title: 'Analysis of storm and Severe Weather Events on Public Health and Economy in
+  United States '
+author: "WANG Xin"
+date: "2016年2月28日"
+output: pdf_document
+---
+## Synopsis
+
+Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. Many severe events can result in fatalities, injuries, and property damage, and preventing such outcomes to the extent possible is a key concern.
+
+This project involves exploring the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.
+
+**NOTE:** As a peer assignment of Coursera course, this is only to show ability of reproducible research. Please do **NOT** take serious look at the results in this page. 
+
+## Data Processing
+
+#### Basic setting
+```{r,message=FALSE}
+setwd("~/git/RepData_PeerAssessment2")
+library(R.utils)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(ggplot2)
+library(knitr)
+```
+
+#### Load data
+The original dataset contains 37 variables and 902297 entries.
+```{r}
+if (!file.exists("repdata-data-StormData.csv")) {
+    bunzip2("repdata-data-StormData.csv.bz2", remove=FALSE)
+}
+
+if (!"stormData" %in% ls()) {
+    stormData <- read.csv("repdata-data-StormData.csv", stringsAsFactors = FALSE)
+} 
+
+stormData <- tbl_df(stormData)
+dim(stormData)
+```
+#### Subset data
+
+##### 1 Select useful variables for further study
+
++ BGN-DATE: the begining data of the event
++ EVTYPE: the type of the event
++ FATALITIES: the number of fatalities attributed to the event
++ INJURIES: the number of injurues attributed to the event
++ PROPDMG,PROPDMGEXP: the amount of property damege attributed to the event
++ CROPDMG,CROPDMGEXP: the amount of crop damage attributed to the event
+
+```{r}
+stormData <- select(stormData,BGN_DATE,EVTYPE,FATALITIES,INJURIES,PROPDMG,PROPDMGEXP,CROPDMG,CROPDMGEXP)
+```
+
+##### 2 filter the period of data which record all type of event
+From the information provided by NOAA's [webpage](https://www.ncdc.noaa.gov/stormevents/details.jsp?type=eventtype) of Storm Events Database: From 1996 to present, all 48 event types are recorded as defined in NWS Directive 10-1605. So that's the peroid I'm going to analysis.
+
+```{r}
+stormData$BGN_DATE <- mdy_hms(stormData$BGN_DATE)
+stormData <- filter(stormData, year(BGN_DATE)>1995)
+dim(stormData)
+```
+
+#### Translate EXP and calculate total amount of damage
+
+```{r}
+unique(stormData$PROPDMGEXP)
+stormData$PROPDMGEXP[stormData$PROPDMGEXP == "K"] <- 3
+stormData$PROPDMGEXP[stormData$PROPDMGEXP == "M"] <- 6
+stormData$PROPDMGEXP[stormData$PROPDMGEXP == "B"] <- 9
+stormData$PROPDMGEXP[stormData$PROPDMGEXP == ""] <- 0
+stormData <- mutate(stormData, PROP = PROPDMG * 10 ^ as.integer(PROPDMGEXP))
+
+unique(stormData$CROPDMGEXP)
+stormData$CROPDMGEXP[stormData$CROPDMGEXP == "K"] <- 3
+stormData$CROPDMGEXP[stormData$CROPDMGEXP == "M"] <- 6
+stormData$CROPDMGEXP[stormData$CROPDMGEXP == "B"] <- 9
+stormData$CROPDMGEXP[stormData$CROPDMGEXP == ""] <- 0
+stormData <- mutate(stormData, CROP = CROPDMG * 10 ^ as.integer(CROPDMGEXP))
+```
+
+#### Aggregate data by event type
+
+```{r}
+stormData <- group_by(stormData, EVTYPE)
+stormData <- select(stormData, EVTYPE, FATALITIES, INJURIES, PROP, CROP)
+stormData <- summarise_each(stormData, funs(sum))
+```
+
+## Results
+
+### 1 Which types of events are most harmful with respect to population health?
+
+```{r}
+health <- select(stormData, EVTYPE, FATALITIES, INJURIES)
+health <- arrange(health, desc(FATALITIES+INJURIES))
+kable(head(health,10))
+health <- gather(head(health,10), type, value, 2:3)
+ggplot(health, aes(x=reorder(EVTYPE,-value), y=value,fill=type)) + 
+        geom_bar(position = "stack", stat = "identity") +
+        ggtitle("Top 10 most harmful events to population health") +
+        labs(x="type of events", y="total numner of people affected") +
+        theme(axis.text.x=element_text(angle = 45, hjust = 1))
+```
+
+So, **tornado** is the most harmful event to humen health (fatalities plus injuries), but **excessive heat** leads more people died. 
+
+### 2 What events cause the most economic damage?
+
+```{r}
+money <- select(stormData, EVTYPE, PROP, CROP)
+money <- arrange(money, desc(PROP+CROP))
+kable(head(money,10))
+money <- gather(head(money,10), type, damage, 2:3)
+ggplot(money, aes(x=reorder(EVTYPE,-damage), y=damage,fill=type)) + 
+        geom_bar(position = "stack", stat = "identity") +
+        ggtitle("Top 10 most harmful events to economic damage") +
+        labs(x="type of events", y="total economic damage") +
+        theme(axis.text.x=element_text(angle = 45, hjust = 1))
+```
+
+So, **flood** is the event that cause the most economic damage.
