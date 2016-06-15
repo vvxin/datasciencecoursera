@@ -2,6 +2,8 @@
 ### ---- Coursera assignment: Developing Data Products
 ##### By **Wang Xin**
 ##### **2016-6-14**
+##### **Code on Github:** https://github.com/vvxin/datasciencecoursera/tree/master/DevelopingDataProduct
+
 
 This application is to explore the relationship between ozone concentration and weather conditions, and try to predict ozone level with different model configuration.
 
